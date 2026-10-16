@@ -46,8 +46,7 @@ def cmd_ingest(_a) -> None:
 
 
 def cmd_transform(_a) -> None:
-    _dbt("seed")
-    _dbt("build", "--exclude", "resource_type:seed")
+    _dbt("build")          # seeds + models + data tests + unit tests, in DAG order
     _dbt("docs", "generate")
 
 
