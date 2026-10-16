@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: int_part_d__accepted
+    description: Staging rows with row_status = 'accepted'.
+  - name: int_prescriber_yearly_attributes
+    description: Prescriber attributes as reported for each data year (SCD2 input).
+    data_tests:
+      - dbt_utils_free_unique_combination:
+          columns: ['npi', 'data_year']
+    columns:
+      - name: attribute_hash
+        description: Hash of all tracked attributes; a change in hash = a new SCD2 version.
+        data_tests: [not_null]

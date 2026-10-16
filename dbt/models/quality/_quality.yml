@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: dq_quarantine
+    description: Rows that failed a row-level quality rule, with the reason and lineage.
+    columns:
+      - name: raw_row_id
+        data_tests: [unique, not_null]
+      - name: dq_issue
+        data_tests: [not_null]
+  - name: dq_reconciliation
+    description: Row counts by status and quality issue. Sums to the raw row count.
