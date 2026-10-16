@@ -1,0 +1,96 @@
+# Data contract for the CMS "Medicare Part D Prescribers - by Provider and Drug" feed.
+#
+# A data contract is the agreement between a producer and its consumers about shape and
+# meaning. It is enforced at INGESTION (shift-left): a file that breaks the structural
+# contract never reaches the warehouse. Row-level semantic rules (valid NPI, non-negative
+# measures, ...) are enforced later in dbt so bad ROWS are quarantined, not whole files.
+
+dataset: medicare_part_d_prescribers_by_provider_and_drug
+owner: data-engineering
+source: https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug
+grain: one row per prescriber NPI x brand name x generic name x data year
+
+# Filenames carry the business period and the release version: partd_<year>_v<version>.csv
+file_pattern: '^partd_(?P<data_year>\d{4})_v(?P<file_version>\d+)\.csv$'
+
+# What to do with a column the contract has never heard of.
+#   fail -> reject the file (default: unknown columns usually mean the producer changed something)
+#   warn -> load known columns, log the unknown ones
+unknown_columns: fail
+
+# Canonical column -> every header name the producer has used for it.
+# The FIRST alias is the current CMS name. Matching is case- and whitespace-insensitive.
+columns:
+  - name: prscrbr_npi
+    aliases: [Prscrbr_NPI, npi]
+    required: true
+    description: 10-digit National Provider Identifier of the prescriber (natural key).
+  - name: prscrbr_last_org_name
+    aliases: [Prscrbr_Last_Org_Name, nppes_provider_last_org_name]
+    required: true
+    description: Last name, or organization name for organizations.
+  - name: prscrbr_first_name
+    aliases: [Prscrbr_First_Name, nppes_provider_first_name]
+    required: false
+    description: First name (blank for organizations).
+  - name: prscrbr_city
+    aliases: [Prscrbr_City, nppes_provider_city]
+    required: true
+    description: City of the prescriber's practice location.
+  - name: prscrbr_state_abrvtn
+    aliases: [Prscrbr_State_Abrvtn, nppes_provider_state]
+    required: true
+    description: Two-letter state code.
+  - name: prscrbr_state_fips
+    aliases: [Prscrbr_State_FIPS]
+    required: false          # added in the redesigned layout; null for legacy files
+    description: State FIPS code.
+  - name: prscrbr_type
+    aliases: [Prscrbr_Type, specialty_description]
+    required: true
+    description: Provider specialty derived from Medicare enrollment or taxonomy.
+  - name: prscrbr_type_src
+    aliases: [Prscrbr_Type_Src]
+    required: false          # additive column: absent in legacy files
+    description: Source of the specialty value (S = Medicare specialty code, T = taxonomy).
+  - name: brnd_name
+    aliases: [Brnd_Name, drug_name]
+    required: true
+    description: Brand name (for generics CMS repeats the generic name).
+  - name: gnrc_name
+    aliases: [Gnrc_Name, generic_name]
+    required: true
+    description: Generic (chemical) name.
+  - name: tot_clms
+    aliases: [Tot_Clms, total_claim_count]
+    required: true
+    description: Number of Part D claims incl. refills. CMS omits rows with fewer than 11.
+  - name: tot_30day_fills
+    aliases: [Tot_30day_Fills, total_30_day_fill_count]
+    required: true
+    description: Standardized 30-day fills.
+  - name: tot_day_suply
+    aliases: [Tot_Day_Suply, total_day_supply]
+    required: true
+    description: Total days of supply dispensed.
+  - name: tot_drug_cst
+    aliases: [Tot_Drug_Cst, total_drug_cost]
+    required: true
+    description: Gross drug cost in USD paid by plan + beneficiary + others, BEFORE rebates.
+  - name: tot_benes
+    aliases: [Tot_Benes, bene_count]
+    required: true
+    description: Unique beneficiaries. Blank (suppressed) when between 1 and 10.
+  - name: ge65_sprsn_flag
+    aliases: [GE65_Sprsn_Flag, ge65_suppress_flag]
+    required: false
+    description: "Suppression flag for 65+ measures: '*' small cell, '#' counter-suppression."
+
+# Known columns we deliberately do not load (documented, so they are not "unknown").
+ignored_columns:
+  - GE65_Tot_Clms
+  - GE65_Tot_30day_Fills
+  - GE65_Tot_Drug_Cst
+  - GE65_Tot_Day_Suply
+  - GE65_Bene_Sprsn_Flag
+  - GE65_Tot_Benes
