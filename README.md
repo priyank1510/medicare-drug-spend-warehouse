@@ -66,7 +66,6 @@ flowchart LR
 | Quality | `dbt/models/quality` | Quarantine table and row-level reconciliation. |
 
 Why each choice was made: [docs/decisions/](docs/decisions/README.md).
-How every concept works, mapped to *Fundamentals of Data Engineering*: **[LEARN.md](LEARN.md)**.
 
 ## Quickstart
 
@@ -133,7 +132,6 @@ dbt/models/quality         quarantine, reconciliation
 dbt/tests                  singular + generic tests
 tests/                     pytest
 docs/decisions/            ADRs
-LEARN.md                   study guide: concepts, tools, interview Q&A
 ```
 
 ## Limitations and next steps

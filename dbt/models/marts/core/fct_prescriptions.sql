@@ -7,7 +7,7 @@
 
   Materialized as a full-refresh table on purpose: a late correction can move SCD2 version
   boundaries, which changes prescriber_sk for historical facts. An incremental fact would
-  keep pointing at keys that no longer exist. (See LEARN.md, "Why is the fact not incremental?")
+  keep pointing at keys that no longer exist. (  keep pointing at keys that no longer exist. See docs/decisions/. )
 */
 with accepted as (
 
