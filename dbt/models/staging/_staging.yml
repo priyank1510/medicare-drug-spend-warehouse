@@ -24,3 +24,23 @@ models:
         data_tests: [not_null]
       - name: is_beneficiary_count_suppressed
         description: CMS blanks beneficiary counts between 1 and 10 to protect privacy. Not an error.
+
+unit_tests:
+  - name: stg_status_precedence_dupes_then_restatements_then_quality
+    description: >
+      An exact copy is a duplicate; an older version is superseded by a later file version
+      even though it arrived first; a bad NPI is quarantined with its reason.
+    model: stg_part_d__prescriber_drug
+    given:
+      - input: source('raw', 'part_d_prescriber_drug')
+        rows:
+          - {prscrbr_npi: '1000000001', brnd_name: 'Eliquis', gnrc_name: 'Apixaban', tot_clms: '20', tot_day_suply: '600', tot_30day_fills: '20', tot_drug_cst: '$1,000.00', _data_year: '2022', _file_version: '1', _row_number: '1', _batch_id: 'b1', _arrival_date: '2024-05-01', _row_hash: 'h1'}
+          - {prscrbr_npi: '1000000001', brnd_name: 'Eliquis', gnrc_name: 'Apixaban', tot_clms: '20', tot_day_suply: '600', tot_30day_fills: '20', tot_drug_cst: '$1,000.00', _data_year: '2022', _file_version: '1', _row_number: '2', _batch_id: 'b1', _arrival_date: '2024-05-01', _row_hash: 'h1'}
+          - {prscrbr_npi: 'BADNPI', brnd_name: 'Eliquis', gnrc_name: 'Apixaban', tot_clms: '20', tot_day_suply: '600', tot_30day_fills: '20', tot_drug_cst: '10', _data_year: '2022', _file_version: '1', _row_number: '3', _batch_id: 'b1', _arrival_date: '2024-05-01', _row_hash: 'h3'}
+          - {prscrbr_npi: ' 1000000001 ', brnd_name: 'ELIQUIS ', gnrc_name: 'apixaban', tot_clms: '21', tot_day_suply: '630', tot_30day_fills: '21', tot_drug_cst: '1100', _data_year: '2022', _file_version: '2', _row_number: '1', _batch_id: 'b2', _arrival_date: '2025-08-15', _row_hash: 'h9'}
+    expect:
+      rows:
+        - {batch_id: 'b1', source_row_number: 1, row_status: 'superseded',      dq_issue: null}
+        - {batch_id: 'b1', source_row_number: 2, row_status: 'exact_duplicate', dq_issue: null}
+        - {batch_id: 'b1', source_row_number: 3, row_status: 'quarantined',     dq_issue: 'invalid_npi'}
+        - {batch_id: 'b2', source_row_number: 1, row_status: 'accepted',        dq_issue: null}

@@ -1,0 +1,107 @@
+version: 2
+
+models:
+  - name: dim_prescriber
+    description: >
+      SCD Type 2 prescriber dimension. One row per prescriber per version of their
+      attributes (name, city, state, specialty). Versions are keyed by data_year.
+      Includes an unknown member (prescriber_sk = '-1').
+    columns:
+      - name: prescriber_sk
+        description: Surrogate key (npi + valid_from_year).
+        data_tests: [unique, not_null]
+      - name: npi
+        data_tests: [not_null]
+      - name: valid_from_year
+        data_tests: [not_null]
+      - name: valid_to_year
+        description: Last data_year this version applies to; 9999 = still open.
+        data_tests: [not_null]
+      - name: is_current
+        data_tests: [not_null]
+      - name: prescriber_specialty
+        description: Specialty as reported for the version's years. 'UNKNOWN' when CMS had none.
+        data_tests: [not_null]
+
+  - name: dim_drug
+    description: One row per brand x generic product, plus an unknown member.
+    columns:
+      - name: drug_sk
+        data_tests: [unique, not_null]
+      - name: drug_type
+        data_tests:
+          - accepted_values:
+              values: ['Brand', 'Generic', 'Unknown']
+    data_tests:
+      - unique_combination:
+          columns: ['brand_name', 'generic_name']
+
+  - name: dim_geography
+    description: State reference (seed) plus an unknown member.
+    columns:
+      - name: state_code
+        data_tests: [unique, not_null]
+
+  - name: fct_prescriptions
+    description: "Grain: prescriber x drug x data year. Measures are additive except the ratios."
+    columns:
+      - name: prescription_id
+        data_tests: [unique, not_null]
+      - name: prescriber_sk
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_prescriber')
+              field: prescriber_sk
+      - name: drug_sk
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_drug')
+              field: drug_sk
+      - name: state_code
+        data_tests:
+          - relationships:
+              to: ref('dim_geography')
+              field: state_code
+      - name: total_claims
+        description: Part D claims (incl. refills). CMS only publishes rows with 11 or more.
+        data_tests: [not_null, non_negative]
+      - name: total_day_supply
+        data_tests: [not_null, non_negative]
+      - name: total_drug_cost
+        description: Gross cost in USD before rebates.
+        data_tests: [not_null, non_negative]
+      - name: total_beneficiaries
+        description: NULL when CMS suppressed the count (1-10 beneficiaries). Never treat as 0.
+
+unit_tests:
+  - name: dim_prescriber_builds_scd2_versions_from_data_year
+    description: >
+      Unchanged attributes collapse into one version, a change opens a new version, a gap
+      year does not create a version, and A -> B -> A produces three versions.
+    model: dim_prescriber
+    given:
+      - input: ref('int_prescriber_yearly_attributes')
+        rows:
+          - {npi: 'STABLE',  data_year: 2021, prescriber_specialty: 'CARDIOLOGY', attribute_hash: 'h1'}
+          - {npi: 'STABLE',  data_year: 2022, prescriber_specialty: 'CARDIOLOGY', attribute_hash: 'h1'}
+          - {npi: 'STABLE',  data_year: 2023, prescriber_specialty: 'CARDIOLOGY', attribute_hash: 'h1'}
+          - {npi: 'MOVED',   data_year: 2021, prescriber_state: 'WI', attribute_hash: 'wi'}
+          - {npi: 'MOVED',   data_year: 2022, prescriber_state: 'TX', attribute_hash: 'tx'}
+          - {npi: 'MOVED',   data_year: 2023, prescriber_state: 'TX', attribute_hash: 'tx'}
+          - {npi: 'GAP',     data_year: 2021, attribute_hash: 'g'}
+          - {npi: 'GAP',     data_year: 2023, attribute_hash: 'g'}
+          - {npi: 'ABA',     data_year: 2021, attribute_hash: 'a'}
+          - {npi: 'ABA',     data_year: 2022, attribute_hash: 'b'}
+          - {npi: 'ABA',     data_year: 2023, attribute_hash: 'a'}
+    expect:
+      rows:
+        - {npi: 'STABLE',  valid_from_year: 2021, valid_to_year: 9999, is_current: true,  version_number: 1}
+        - {npi: 'MOVED',   valid_from_year: 2021, valid_to_year: 2021, is_current: false, version_number: 1}
+        - {npi: 'MOVED',   valid_from_year: 2022, valid_to_year: 9999, is_current: true,  version_number: 2}
+        - {npi: 'GAP',     valid_from_year: 2021, valid_to_year: 9999, is_current: true,  version_number: 1}
+        - {npi: 'ABA',     valid_from_year: 2021, valid_to_year: 2021, is_current: false, version_number: 1}
+        - {npi: 'ABA',     valid_from_year: 2022, valid_to_year: 2022, is_current: false, version_number: 2}
+        - {npi: 'ABA',     valid_from_year: 2023, valid_to_year: 9999, is_current: true,  version_number: 3}
+        - {npi: 'UNKNOWN', valid_from_year: 0,    valid_to_year: 9999, is_current: true,  version_number: 1}

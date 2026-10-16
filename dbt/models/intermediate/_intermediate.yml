@@ -6,7 +6,7 @@ models:
   - name: int_prescriber_yearly_attributes
     description: Prescriber attributes as reported for each data year (SCD2 input).
     data_tests:
-      - dbt_utils_free_unique_combination:
+      - unique_combination:
           columns: ['npi', 'data_year']
     columns:
       - name: attribute_hash

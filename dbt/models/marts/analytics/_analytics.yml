@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: mart_drug_spend_trend
+    description: Spend, claims and YoY growth per generic molecule per year, with an in-year spend rank.
+    data_tests:
+      - unique_combination:
+          columns: ['generic_name', 'data_year']
+    columns:
+      - name: yoy_cost_change_pct
+        description: NULL when the molecule has no row for the immediately preceding year.
+  - name: mart_generic_savings_opportunity
+    description: Upper-bound gross savings if brand days of supply were dispensed at the generic cost per day.
+    data_tests:
+      - unique_combination:
+          columns: ['generic_name', 'data_year']
+    columns:
+      - name: potential_gross_savings
+        description: Gross (pre-rebate) savings estimate. Can be negative only if the brand is cheaper per day.
+  - name: mart_specialty_spend
+    description: Spend per specialty per year using point-in-time (SCD2) specialty.
+    data_tests:
+      - unique_combination:
+          columns: ['prescriber_specialty', 'data_year']

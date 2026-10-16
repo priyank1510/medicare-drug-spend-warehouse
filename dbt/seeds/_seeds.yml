@@ -1,0 +1,13 @@
+version: 2
+
+seeds:
+  - name: state_reference
+    description: US states + DC + territories with Census region. Static reference data lives in git as a seed.
+    config:
+      column_types:
+        state_code: varchar
+        state_name: varchar
+        census_region: varchar
+    columns:
+      - name: state_code
+        data_tests: [unique, not_null]
