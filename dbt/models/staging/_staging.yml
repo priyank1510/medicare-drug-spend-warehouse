@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_part_d__prescriber_drug
+    description: >
+      Typed and cleaned Part D rows. Exactly one row per raw row, each labelled with a
+      row_status. This is the single place where cleaning and deduplication rules live.
+    columns:
+      - name: raw_row_id
+        description: Surrogate key of the raw row (batch + row number).
+        data_tests: [unique, not_null]
+      - name: row_status
+        description: accepted | exact_duplicate | superseded | quarantined
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['accepted', 'exact_duplicate', 'superseded', 'quarantined']
+      - name: dq_issue
+        description: Which quality rule failed. Only populated when row_status = quarantined.
+        data_tests:
+          - accepted_values:
+              values: ['invalid_npi', 'missing_drug_name', 'missing_measure', 'missing_drug_cost', 'negative_measure']
+      - name: data_year
+        data_tests: [not_null]
+      - name: is_beneficiary_count_suppressed
+        description: CMS blanks beneficiary counts between 1 and 10 to protect privacy. Not an error.
