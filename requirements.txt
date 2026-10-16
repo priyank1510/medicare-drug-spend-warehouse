@@ -1,0 +1,6 @@
+# Runtime + test dependencies. Ranges are pinned to a known-compatible minor line.
+duckdb>=1.1,<1.2
+dbt-core>=1.8,<1.10
+dbt-duckdb>=1.8,<1.10
+PyYAML>=6.0
+pytest>=8.0
