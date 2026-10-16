@@ -1,0 +1,22 @@
+name: drugspend
+
+services:
+  # One-shot worker: `make run` / `make test` start it, it does its job and exits.
+  pipeline:
+    build: .
+    image: drugspend-pipeline:local
+    profiles: ["cli"]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # files written to ./data stay owned by you
+    working_dir: /app
+    volumes:
+      - ./:/app                                    # live code + outputs land in ./data, ./dbt/target
+    environment:
+      DRUGSPEND_DATA_DIR: /app/data
+
+  # Long-running: serves the generated dbt docs site (lineage graph, column docs, tests).
+  docs:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dbt/target:/usr/share/nginx/html:ro
