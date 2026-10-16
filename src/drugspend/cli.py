@@ -33,8 +33,9 @@ def _dbt(*args: str) -> None:
 def cmd_generate(a) -> None:
     from drugspend.generate import generate
     s = get_settings()
-    if a.fresh and s.data_dir.exists():
-        shutil.rmtree(s.data_dir)  # start from a clean slate so reruns are reproducible
+    if a.fresh:  # start from a clean slate so reruns are reproducible
+        for d in (s.landing_dir, s.bronze_dir, s.warehouse_path.parent, s.reports_dir):
+            shutil.rmtree(d, ignore_errors=True)
     m = generate(a.prescribers, a.seed)
     print(f"generated {m['rows_written_total']:,} rows in {len(m['files_in_arrival_order'])} files")
 
@@ -54,8 +55,11 @@ def cmd_report(_a, timings: dict | None = None) -> None:
     import duckdb
     from drugspend.report import build_report
     s = get_settings()
-    with duckdb.connect(str(s.warehouse_path), read_only=True) as con:
+    con = duckdb.connect(str(s.warehouse_path), read_only=True)
+    try:
         ok, text = build_report(con, s.defect_manifest_path, s.reports_dir / "defect_report.md", timings)
+    finally:
+        con.close()
     print(text)
     if not ok:
         sys.exit("Reconciliation FAILED: a defect class was not handled as expected.")
