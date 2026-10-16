@@ -58,6 +58,8 @@ DRUG_CATALOG: list[tuple[str, str, float, str, float]] = [
     ("Gabapentin", "Gabapentin", 0.30, "neuro", 1.00),
 ]
 
+GENERIC_AVAILABLE = {g for b, g, *_ in DRUG_CATALOG if b == g}
+
 SPECIALTY_AREAS: dict[str, dict[str, int]] = {
     "Internal Medicine": {"cardio": 5, "diabetes": 4, "endocrine": 2, "gi": 2, "psych": 1, "neuro": 1},
     "Family Practice": {"cardio": 4, "diabetes": 4, "endocrine": 2, "gi": 2, "psych": 2, "neuro": 1},
@@ -177,7 +179,9 @@ def _clean_rows(rng: random.Random, prescribers: list[Prescriber]):
                 continue
             areas = SPECIALTY_AREAS[specialty]
             candidates = [d for d in DRUG_CATALOG if d[3] in areas]
-            weights = [areas[d[3]] for d in candidates]
+            # Brands that have a generic equivalent are dispensed far less often than the generic.
+            weights = [areas[d[3]] * (0.15 if d[0] != d[1] and d[1] in GENERIC_AVAILABLE else 1.0)
+                       for d in candidates]
             k = min(len(candidates), rng.randint(5, 11))
             chosen: dict[str, tuple] = {}
             while len(chosen) < k:
