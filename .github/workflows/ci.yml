@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pipeline:
+    name: pipeline + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Full pipeline (generate -> ingest -> dbt build -> reconcile)
+        run: python -m drugspend.cli run
+
+      - name: pytest (unit + end-to-end)
+        run: python -m pytest -q
+
+      - name: Defect report -> job summary
+        if: always()
+        run: cat data/reports/defect_report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload dbt docs + report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs-and-defect-report
+          path: |
+            dbt/target/index.html
+            dbt/target/manifest.json
+            dbt/target/catalog.json
+            data/reports/
+          retention-days: 7
+
+  docker:
+    name: docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pipeline image
+        run: docker compose --profile cli build pipeline
