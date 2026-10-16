@@ -1,0 +1,30 @@
+name: drugspend
+version: "1.0.0"
+config-version: 2
+profile: drugspend
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages", "logs"]
+
+models:
+  drugspend:
+    staging:        # silver: typed, cleaned, every raw row labelled with a status
+      +schema: staging
+      +materialized: view
+    intermediate:   # business-ready building blocks
+      +schema: intermediate
+      +materialized: view
+    marts:          # gold: star schema + analytics, materialized for fast reads
+      +schema: marts
+      +materialized: table
+    quality:        # quarantine + reconciliation, kept as tables for auditing
+      +schema: quality
+      +materialized: table
+
+seeds:
+  drugspend:
+    +schema: reference

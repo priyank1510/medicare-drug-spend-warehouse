@@ -1,0 +1,9 @@
+# Lives in the repo on purpose: DuckDB is a local file, so there are no secrets here.
+drugspend:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DRUGSPEND_DUCKDB_PATH', '../data/warehouse/drugspend.duckdb') }}"
+      schema: main
+      threads: 4

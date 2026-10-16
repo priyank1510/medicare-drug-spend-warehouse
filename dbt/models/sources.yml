@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: Written only by `drugspend ingest`. Every value is text, exactly as delivered.
+    tables:
+      - name: part_d_prescriber_drug
+        description: >
+          CMS Medicare Part D Prescribers - by Provider and Drug, all files and versions,
+          mapped to canonical column names by the data contract. Includes lineage columns
+          (_batch_id, _source_file, _arrival_date, _data_year, _file_version, _row_number,
+          _row_hash, _schema_fingerprint, _loaded_at).
+        columns:
+          - name: _batch_id
+            data_tests: [not_null]
+          - name: _row_hash
+            data_tests: [not_null]
+      - name: _load_audit
+        description: One row per loaded file (checksum, row count, renamed/ignored columns).
+        columns:
+          - name: source_file
+            data_tests: [unique, not_null]
